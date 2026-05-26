@@ -1,0 +1,7 @@
+project_id   = "your-gcp-project-id"
+region       = "us-central1"
+dataset_id   = "fraud_investigation"
+bucket_name  = "your-unique-fraud-reports-bucket"
+service_name = "fraud-investigation-api"
+image        = "us-central1-docker.pkg.dev/your-project/fraud/api:latest"
+# gemini_api_key = "..."  # prefer: gcloud secrets + Cloud Run secret env

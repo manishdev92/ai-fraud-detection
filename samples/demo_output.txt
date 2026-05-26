@@ -1,0 +1,61 @@
+# Sample demo output — Agentic Financial Fraud Investigation Platform
+# Run: ./scripts/demo.sh  (or commands in README)
+
+$ curl -s http://127.0.0.1:8000/health | jq .
+{
+  "status": "ok",
+  "app_env": "local",
+  "gemini_enabled": false,
+  "bigquery_enabled": false,
+  "gcs_enabled": false
+}
+
+$ curl -s -X POST http://127.0.0.1:8000/generate-transactions \
+  -H "Content-Type: application/json" \
+  -d '{"count": 500, "fraud_ratio": 0.08, "seed": 42}' | jq .
+{
+  "generated": 539,
+  "accounts": 20,
+  "message": "Stored 541 transactions across 20 accounts (local DB)."
+}
+
+$ curl -s -X POST http://127.0.0.1:8000/run-fraud-investigation \
+  -H "Content-Type: application/json" \
+  -d '{"lookback_hours": 336}' | jq .
+{
+  "investigation_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "findings_count": 9,
+  "summary": {
+    "total_findings": 9,
+    "unique_accounts": 6,
+    "by_rule": {
+      "mule_account_pattern": 1,
+      "cross_border_anomaly": 3,
+      "rapid_repeated_transfers": 2,
+      "account_velocity_spike": 1,
+      "high_value_unusual": 2
+    },
+    "by_severity": {
+      "medium": 2,
+      "high": 7,
+      "critical": 1
+    },
+    "max_risk_score": 92.0
+  },
+  "report_id": "...",
+  "report_preview": "# Suspicious Activity Investigation Report..."
+}
+
+$ curl -s "http://127.0.0.1:8000/findings?limit=3" | jq '.findings[0]'
+{
+  "rule_name": "mule_account_pattern",
+  "severity": "critical",
+  "risk_score": 92.0,
+  "explanation": "Account received funds from 4 distinct sources ...",
+  "evidence": {
+    "inbound_sources": 4,
+    "inbound_total_usd": 5200.0,
+    "outbound_usd": 5200.0,
+    "outbound_country": "NG"
+  }
+}
