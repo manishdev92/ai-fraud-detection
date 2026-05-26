@@ -35,6 +35,7 @@ def health():
         "gemini_enabled": settings.gemini_enabled,
         "bigquery_enabled": settings.gcp_enabled,
         "gcs_enabled": bool(settings.gcs_bucket_name),
+        "database": "postgresql" if settings.database_url.startswith("postgresql") else "sqlite",
     }
 
 

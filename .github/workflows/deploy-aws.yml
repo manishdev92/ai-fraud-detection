@@ -1,0 +1,110 @@
+name: Deploy to AWS
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "app/**"
+      - "scripts/**"
+      - "requirements.txt"
+      - "Dockerfile"
+      - ".github/workflows/deploy-aws.yml"
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+  PROJECT_NAME: fraud-platform
+  ENVIRONMENT: prod
+
+jobs:
+  deploy:
+    name: Build, push ECR, deploy ECS
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set image coordinates
+        id: image
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          REPO="${PROJECT_NAME}-${ENVIRONMENT}-api"
+          IMAGE="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${REPO}"
+          echo "repository=${REPO}" >> "$GITHUB_OUTPUT"
+          echo "uri=${IMAGE}" >> "$GITHUB_OUTPUT"
+          echo "tag=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push Docker image
+        run: |
+          docker build -t "${{ steps.image.outputs.uri }}:${{ steps.image.outputs.tag }}" \
+                       -t "${{ steps.image.outputs.uri }}:latest" .
+          docker push "${{ steps.image.outputs.uri }}:${{ steps.image.outputs.tag }}"
+          docker push "${{ steps.image.outputs.uri }}:latest"
+
+      - name: Register new ECS task definition and deploy
+        env:
+          IMAGE_URI: ${{ steps.image.outputs.uri }}:${{ steps.image.outputs.tag }}
+        run: |
+          set -euo pipefail
+          CLUSTER="${ECS_CLUSTER_NAME:-fraud-platform-prod-cluster}"
+          SERVICE="${ECS_SERVICE_NAME:-fraud-platform-prod-service}"
+          TASK_FAMILY="${ECS_TASK_FAMILY:-fraud-platform-prod-api}"
+
+          aws ecs describe-task-definition \
+            --task-definition "$TASK_FAMILY" \
+            --query taskDefinition > task-definition.json
+
+          jq 'del(
+            .taskDefinitionArn,
+            .revision,
+            .status,
+            .requiresAttributes,
+            .compatibilities,
+            .registeredAt,
+            .registeredBy
+          )' task-definition.json > task-def-clean.json
+
+          jq --arg IMG "$IMAGE_URI" \
+            '.containerDefinitions[0].image = $IMG' \
+            task-def-clean.json > new-task-def.json
+
+          NEW_ARN=$(aws ecs register-task-definition \
+            --cli-input-json file://new-task-def.json \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text)
+
+          aws ecs update-service \
+            --cluster "$CLUSTER" \
+            --service "$SERVICE" \
+            --task-definition "$NEW_ARN" \
+            --force-new-deployment
+
+          aws ecs wait services-stable \
+            --cluster "$CLUSTER" \
+            --services "$SERVICE"
+
+      - name: Print service URL
+        run: |
+          ALB=$(aws elbv2 describe-load-balancers \
+            --names "${PROJECT_NAME}-${ENVIRONMENT}-alb" \
+            --query 'LoadBalancers[0].DNSName' \
+            --output text 2>/dev/null || echo "")
+          if [ -n "$ALB" ] && [ "$ALB" != "None" ]; then
+            echo "### Deployed API" >> "$GITHUB_STEP_SUMMARY"
+            echo "- URL: http://${ALB}/docs" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Health: http://${ALB}/health" >> "$GITHUB_STEP_SUMMARY"
+          fi

@@ -91,7 +91,10 @@ ai_fraud_detection/
 │   ├── demo.sh
 │   └── sync_to_bigquery.py
 ├── tests/test_app.py
-├── terraform/           # BigQuery + GCS + Cloud Run
+├── infra/aws/terraform/ # AWS ECS + RDS + ALB + GitHub OIDC
+├── .github/workflows/   # CI + deploy-aws
+├── docs/DEPLOY_AWS.md
+├── terraform/           # GCP BigQuery + GCS + Cloud Run
 ├── samples/demo_output.txt
 ├── Dockerfile
 ├── Makefile
@@ -100,6 +103,20 @@ ai_fraud_detection/
 ```
 
 **12 Python source files** (excluding `.venv`) — consolidated for portfolio submission.
+
+**GitHub:** https://github.com/manishdev92/ai-fraud-detection
+
+---
+
+## Deploy to AWS (GitHub Actions + ECS)
+
+Production-style deployment on AWS (ECS Fargate, RDS PostgreSQL, ALB, ECR, Secrets Manager) with **GitHub OIDC** (no static AWS keys in CI).
+
+See **[docs/DEPLOY_AWS.md](docs/DEPLOY_AWS.md)** for the full runbook:
+
+1. `terraform apply` in `infra/aws/terraform`
+2. Add GitHub secret `AWS_ROLE_ARN`
+3. Push to `main` → **Deploy to AWS** workflow
 
 ---
 

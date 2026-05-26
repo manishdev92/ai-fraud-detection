@@ -582,11 +582,18 @@ def build_root_agent(settings: Settings | None = None) -> SequentialAgent:
             "Gemini when configured, with template fallback."
         ),
     )
+    bot_c = ComplianceReportBotBCustom(
+        name="google_search",
+        description=(
+            "Bot B — generates formal regulator-style compliance reports using "
+            "Gemini when configured, with template fallback."
+        ),
+    )
 
     return SequentialAgent(
         name="fraud_investigation_coordinator",
         description="Coordinates fraud investigation and compliance reporting.",
-        sub_agents=[bot_a, bot_b],
+        sub_agents=[bot_a, bot_b, bot_c],
     )
 
 

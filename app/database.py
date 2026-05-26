@@ -118,7 +118,8 @@ def get_engine():
     global _engine, _SessionLocal
     if _engine is None:
         settings = get_settings()
-        _ensure_sqlite_dir(settings.database_url)
+        if settings.database_url.startswith("sqlite"):
+            _ensure_sqlite_dir(settings.database_url)
         connect_args = {}
         pool_kwargs: dict = {"pool_pre_ping": True}
         if settings.database_url.startswith("sqlite"):

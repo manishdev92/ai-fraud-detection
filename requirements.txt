@@ -5,6 +5,7 @@ pydantic>=2.9.0
 pydantic-settings>=2.6.0
 sqlalchemy>=2.0.36
 aiosqlite>=0.20.0
+psycopg2-binary>=2.9.10
 
 # GCP (Phase 2 — optional locally)
 google-cloud-bigquery>=3.27.0

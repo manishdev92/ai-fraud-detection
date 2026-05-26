@@ -1,0 +1,12 @@
+aws_region    = "us-east-1"
+project_name  = "fraud-platform"
+environment   = "prod"
+github_org    = "manishdev92"
+github_repo   = "ai-fraud-detection"
+
+# Required for Agent B live reports (never commit real values)
+gemini_api_key = "your-gemini-api-key-here"
+
+ecs_cpu           = 512
+ecs_memory        = 1024
+ecs_desired_count = 1
