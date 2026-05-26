@@ -28,6 +28,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Validate prerequisites
+        run: |
+          if [ -z "${{ secrets.AWS_ROLE_ARN }}" ]; then
+            echo "::error::GitHub secret AWS_ROLE_ARN is not set."
+            echo "Run: cd infra/aws/terraform && terraform apply"
+            echo "Then add secret AWS_ROLE_ARN from: terraform output -raw github_actions_role_arn"
+            exit 1
+          fi
+
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
